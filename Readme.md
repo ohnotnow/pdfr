@@ -15,8 +15,11 @@ Then you can call :
 GET http://localhost:3003/?url=http://www.google.com # generate a pdf of a website
 POST http://localhost:3003 # generate a pdf from html
 ```
-The POST version expects a regular html form-encoded input of `html` with the contents you want rendered out. Each call will return a JSON response
-of the form :
+The POST version expects a regular html form-encoded input of `html` with the contents you want rendered out, eg :
+```bash
+curl -v -X POST --data 'html=<h1>hello</h1>' http://localhost:3003
+```
+Each call will return a JSON response of the form :
 ```json
 {
     "message": "Some info",
