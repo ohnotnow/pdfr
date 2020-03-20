@@ -4,13 +4,13 @@ const uuid = require("uuid");
 const fs = require("fs");
 const path = require("path");
 const process = require("process");
-const app = express();
 const port = process.env.PDFR_PORT ? process.env.PDFR_PORT : 3003;
 const cleanupMinutes = process.env.PDFR_CLEANUP_MINUTES
   ? process.env.PDFR_CLEANUP_MINUTES
   : 60;
 const verbose = process.env.PDFR_VERBOSE ? process.env.PDFR_VERBOSE : false;
 const pdfDir = "pdfs";
+const app = express();
 let browser;
 let page;
 let browserAvailable = false;
@@ -93,23 +93,21 @@ async function closeBrowser() {
   await browser.close();
 }
 
+function sendErrorResponse(res, message, status) {
+  res.status(status);
+  res.json({ message: message, filename: null });
+  if (verbose) {
+    console.log(message);
+  }
+}
+
 app.get("/", (req, res) => {
   if (!browserAvailable) {
-    res.status(424);
-    res.json({
-      message: "Waiting on browser starting - try again",
-      filename: null
-    });
-    return;
+    return sendErrorResponse(res, "Waiting on browser starting - try again", 424);
   }
   const url = req.query.url;
   if (!url) {
-    res.status(422);
-    res.json({ message: "No url supplied", filename: null });
-    if (verbose) {
-      console.log("No url supplied with request");
-    }
-    return;
+    return sendErrorResponse(res, "No url supplied", 422);
   }
   generatePdfFromUrl(url)
     .then(filename => {
@@ -117,27 +115,16 @@ app.get("/", (req, res) => {
     })
     .catch(err => {
       console.error(err);
-      res.status(500);
-      res.json({ message: "Error!", filename: null });
+      return sendErrorResponse(res, "Server Error", 500);
     });
 });
 
 app.post("/", (req, res) => {
   if (!browserAvailable) {
-    res.status(424);
-    res.json({
-      message: "Waiting on browser starting - try again",
-      filename: null
-    });
-    return;
+    return sendErrorResponse(res, "Waiting on browser starting - try again", 424);
   }
   if (!req.body.html) {
-    res.status(422);
-    res.json({ message: "Missing html parameter!", filename: null });
-    if (verbose) {
-      console.log("No html supplied with request");
-    }
-    return;
+    return sendErrorResponse(res, "Missing html parameter", 422);
   }
   generatePdfFromHtml(req.body.html)
     .then(filename => {
@@ -145,16 +132,13 @@ app.post("/", (req, res) => {
     })
     .catch(err => {
       console.error(err);
-      res.status(500);
-      res.json({ message: "Error!", filename: null });
+      return sendErrorResponse(res, "Server Error", 500);
     });
 });
 
 app.get("/pdf/:filename", (req, res) => {
   if (!fs.existsSync(`${pdfDir}/${req.params.filename}`)) {
-    res.status(404);
-    res.end();
-    return;
+    return sendErrorResponse(res, "Not found", 404);
   }
   if (verbose) {
     console.log(`Downloading ${req.params.filename}`);
